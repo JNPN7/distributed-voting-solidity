@@ -8,8 +8,10 @@ error VotingNew__NotVoter();
 error VotingNew__NotVerifiedVoter();
 error VotingNew__AlreadyVoted();
 error VotingNew__NoPosition();
+error VotingNew__PositionAlreadyExists();
 error VotingNew__NoCandidate();
 error VotingNew__CandidateAlreadyExists();
+error VotingNew__UnverifiedCandidate();
 error VotingNew__ElectionExists();
 error VotingNew__ElectionNotExixts();
 error VotingNew__ElectionNotStarted();
@@ -17,6 +19,11 @@ error VotingNew__ElectionNotRunning();
 error VotingNew__ElectionNotEnded();
 
 contract VotingNew {
+    
+    constructor() {
+        admins[msg.sender] = true;
+    }
+    
     struct Voter {
         address _address;
         string name;
@@ -33,9 +40,10 @@ contract VotingNew {
         address _address;
         string name;
         string details;
-        bool verified; // admin verifies
+        mapping (string => bool) verified; // admin verifies
         bool exists;
-        Election election;
+        Election[] election;
+        mapping (string => uint256) voteCount;
     }
     enum State {
         NotStarted,
@@ -62,9 +70,15 @@ contract VotingNew {
     mapping(address => Candidate) candidates;
     mapping(address => Voter) voters;
 
+    // lists
+    string[] electionsList;
+    string[] positionsList;
+    address[] candidateList;
+    address[] votersList;
+
     // modifiers
     modifier onlyAdmin() {
-        if (admins[msg.sender] == true) {
+        if (admins[msg.sender] != true) {
             revert VotingNew__OnlyAdmin();
         }
         _;
@@ -86,33 +100,57 @@ contract VotingNew {
         _;
     }
     modifier positionExists(string memory position) {
-        if (positions[position].exists == true) {
+        if (positions[position].exists != true) {
             revert VotingNew__NoPosition();
         }
         _;
     }
-    modifier candidateExists(address candidate) {//, string memory election) {
-        if (
-            candidates[candidate].exists == true //&&
-            // keccak256(abi.encodePacked(candidates[candidate].election.name)) ==
-            // keccak256(abi.encodePacked(election))
-        ) {
-            revert VotingNew__NoCandidate();
+    modifier positionNotExists(string memory position) {
+        if (positions[position].exists == true) {
+            revert VotingNew__PositionAlreadyExists();
         }
         _;
     }
-    modifier candidateNotExists(address candidate) {//, string memory election) {
-        if (
-            candidates[candidate].exists != true //&&
-            // keccak256(abi.encodePacked(candidates[candidate].election.name)) !=
-            // keccak256(abi.encodePacked(election))
-        ) {
-            revert VotingNew__CandidateAlreadyExists();
+    modifier candidateExists(address candidate, string memory election) {
+        // if (
+        //     candidates[candidate].exists != true &&
+        //     keccak256(abi.encodePacked(candidates[candidate].election.name)) !=
+        //     keccak256(abi.encodePacked(election))
+        // ) {
+        //     revert VotingNew__NoCandidate();
+        // }
+        if (candidates[candidate].exists != true) revert VotingNew__NoCandidate();
+        for (uint256 i; i < candidates[candidate].election.length; i++) {
+            if (keccak256(abi.encodePacked(candidates[candidate].election[i].name)) != keccak256(abi.encodePacked(election))) {
+                revert VotingNew__NoCandidate();
+            }
+        }
+        _;
+    }
+    modifier isCandidateVerified(address candidate, string memory election) {
+        if (candidates[candidate].verified[election] != true) {
+            revert VotingNew__UnverifiedCandidate();
+        }
+        _;
+    }
+    modifier candidateNotExists(address candidate, string memory election) {
+        // if (
+        //     candidates[candidate].exists == true && 
+        //     keccak256(abi.encodePacked(candidates[candidate].election.name)) ==
+        //     keccak256(abi.encodePacked(election))
+        // ) {
+        //     revert VotingNew__CandidateAlreadyExists();
+        // }
+        if (candidates[candidate].exists == true) revert VotingNew__NoCandidate();
+        for (uint256 i; i < candidates[candidate].election.length; i++) {
+            if (keccak256(abi.encodePacked(candidates[candidate].election[i].name)) == keccak256(abi.encodePacked(election))) {
+                revert VotingNew__NoCandidate();
+            }
         }
         _;
     }
     modifier electionExists(string memory election) {
-        if (elections[election].exists == true) {
+        if (elections[election].exists != true) {
             revert VotingNew__ElectionExists();
         }
         _;
@@ -140,15 +178,22 @@ contract VotingNew {
     // Functions
     function addAdmin(address _address) public onlyAdmin {
         admins[_address] = true;
+    } 
+    
+    function checkAdmin() public view returns (bool) {
+        return admins[msg.sender];
     }
 
-    function createPostion(string memory name, string memory details)
+    function createPosition(string memory name, string memory details)
         public
         onlyAdmin
+        positionNotExists(name)
+
     {
         positions[name].name = name;
         positions[name].details = details;
         positions[name].exists = true;
+        positionsList.push(name);
     }
 
     function createElection(
@@ -168,68 +213,77 @@ contract VotingNew {
         //     exists = true,
         //     state = State.NotStarted
         // );
+        electionsList.push(name);
     }
 
     function requestCandidancy(
         string memory name,
         string memory details,
         string memory election
-    ) public electionExists(election) candidateNotExists(msg.sender) {
+    ) public electionExists(election) candidateNotExists(msg.sender, election) {
         candidates[msg.sender]._address = msg.sender;
         candidates[msg.sender].name = name;
         candidates[msg.sender].details = details;
         candidates[msg.sender].exists = true;
-        candidates[msg.sender].verified = false;
-        candidates[msg.sender].election = elections[election];
+        candidates[msg.sender].election.push(elections[election]);
+
+        candidateList.push(msg.sender);
     }
 
-    function verifyCandidancy(
-        address _address, 
-        bool isVerified
-    ) public onlyAdmin {
+    function verifyCandidancy(address _address, bool isVerified, string memory election)
+        public
+        onlyAdmin
+        electionExists(election)
+    {
         if (isVerified == true) {
-            candidates[_address].verified = true;
+            candidates[_address].verified[election] = true;
             return;
         }
         delete candidates[_address];
+        // TODO! need to remove candidate form list
     }
 
-    function getElection(string memory name) public view returns (
-        string memory details,
-        State state
-    ) {
+    function getElection(string memory name)
+        public
+        view
+        returns (string memory details, State state)
+    {
         details = elections[name].details;
         state = elections[name].state;
         return (details, state);
     }
 
-    function getPosition(string memory name) public view returns (
-        string memory details,
-        address person
-    ) {
+    function getPosition(string memory name)
+        public
+        view
+        returns (string memory details, address person, bool exists)
+    {
         details = positions[name].details;
         person = positions[name].person;
-        return (details, person);
+        exists = positions[name].exists;
+        return (details, person, exists);
     }
 
-    function getCandidates(address _address) public view returns (
-        string memory name,
-        string memory details,
-        bool verfied,
-        bool exists,
-        string memory position
-    ) {
+    function getCandidate(address _address)
+        public
+        view
+        returns (
+            string memory name,
+            string memory details,
+            // bool verfied,
+            bool exists
+            // string memory position
+        )
+    {
         name = candidates[_address].name;
         details = candidates[_address].details;
-        verfied = candidates[_address].verified;
+        // verfied = candidates[_address].verified;
         exists = candidates[_address].exists;
-        position = candidates[_address].election.position.name;
-        return(name, details, verfied, exists, position);
+        // position = candidates[_address].election.position.name;
+        return (name, details, exists);//, position);
     }
 
-    function requestVoter(
-        string memory name
-    ) public  {
+    function requestVoter(string memory name) public {
         if (voters[msg.sender].exists == true) {
             revert("voter already exist");
         }
@@ -237,18 +291,74 @@ contract VotingNew {
         voters[msg.sender].name = name;
         voters[msg.sender].exists = true;
         voters[msg.sender].verified = false;
+
+        votersList.push(msg.sender);
     }
 
-    function verifyVoter(
-        address _address, 
-        bool isVerified
-    ) public onlyAdmin {
+    function verifyVoter(address _address, bool isVerified) public onlyAdmin {
         if (isVerified == true) {
             voters[_address].verified = true;
             return;
         }
         delete voters[_address];
+        // TODO! need to remove voters form list
+    }
+
+    // function getVoter(address _address) public view returns (
+    //     string memory name,
+    //     bool verfied,
+    //     bool exists
+    // ) {
+    //     name = voters[_address].name;
+    //     verfied = voters[_address].verified;
+    //     exists = voters[_address].exists;
+    //     return(name, verfied, exists);
+    // }
+
+    function vote(string memory election, address candidate)
+        public
+        isVoter
+        electionExists(election)
+        electionRunning(election)
+        candidateExists(candidate, election)
+        isCandidateVerified(candidate, election)
+    {
+        // check if already voted
+        for (uint256 i; i < elections[election].voted.length; i++) {
+            address addr = elections[election].voted[i];
+            if (addr == msg.sender) revert("You have already voted");
+        }
+        elections[election].voted.push(msg.sender);
+        candidates[candidate].voteCount[election] += 1;
     }
 
 
+    // TODO! Need to use time
+    // kamchlauu
+    function startElection (string memory election) 
+        public
+        onlyAdmin
+        electionExists(election)
+    {
+        if (elections[election].state == State.Running) {
+            revert("election already running");
+        }
+        if (elections[election].state == State.Ended) {
+            revert("election already ended");
+        }
+        elections[election].state = State.Running;
+    }
+    function endElection (string memory election) 
+        public
+        onlyAdmin
+        electionExists(election)
+    {
+        if (elections[election].state == State.NotStarted) {
+            revert("election not started");
+        }
+        if (elections[election].state == State.Ended) {
+            revert("election already ended");
+        }
+        elections[election].state = State.Ended;
+    }
 }
