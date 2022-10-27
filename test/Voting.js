@@ -34,14 +34,19 @@ describe("Voting_new", function () {
         voting = await votingFactory.deploy();
     });
 
-    const pos = "senator"
+    const pos = "senator";
     const posDetails = "Represent a planet";
 
     const electionName = "senator-naboo";
-    const electionDetails =  "Selecting senator of Naboo";
+    const electionDetails = "Selecting senator of Naboo";
 
     const candidateName = "Padme Amadala";
     const candidateDetails = "Princess of Naboo";
+
+    const candidate1Name = "Jar Jar Binks";
+    const candidate1Details = "Misa Jar Jar, Yusa?";
+
+    const voterName = "Anakin Skywalker";
 
     it("Should create position", async function () {
         console.log(await voting.checkAdmin());
@@ -69,18 +74,96 @@ describe("Voting_new", function () {
     //     await voting.connect(addr1).createPosition(pos, posDetails);
     // });
 
-    it("Should create election", async function() {
+    it("Should create election", async function () {
         // need to create position first
         await voting.createPosition(pos, posDetails);
-
-        await voting.createElection(electionName, electionDetails, pos)
+        await voting.createElection(electionName, electionDetails, pos);
     });
 
-    it("Should request Candidancy", async function(){
+    it("Should request Candidancy", async function () {
+        const [_, addr1] = await ethers.getSigners();
         await voting.createPosition(pos, posDetails);
-
-        await voting.createElection(electionName, electionDetails, pos)
-
-        await voting.requestCandidancy(candidateName, candidateDetails, electionName);
+        await voting.createElection(electionName, electionDetails, pos);
+        await voting
+            .connect(addr1)
+            .requestCandidancy(candidateName, candidateDetails, electionName);
+        res = await voting.getCandidate(addr1.address);
+        console.log(res);
     });
+
+    it("Should verify candidancy", async function() {
+        const [_, addr1] = await ethers.getSigners();
+        await voting.createPosition(pos, posDetails);
+        await voting.createElection(electionName, electionDetails, pos);
+        await voting
+            .connect(addr1)
+            .requestCandidancy(candidateName, candidateDetails, electionName);
+        
+        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), false);
+        await voting.verifyCandidancy(addr1.address, true, electionName)
+        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), true);
+        res = await voting.getCandidate(addr1.address);
+        // console.log(res);
+    });
+
+    it("Should request voter, verify and vote", async function() {
+        const [_, addr1, addr2] = await ethers.getSigners();
+        await voting.connect(addr2).requestVoter(voterName);
+
+        await voting.verifyVoter(addr2.address, true);
+
+        await voting.createPosition(pos, posDetails);
+        await voting.createElection(electionName, electionDetails, pos);
+        await voting
+            .connect(addr1)
+            .requestCandidancy(candidateName, candidateDetails, electionName);
+        
+        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), false);
+        await voting.verifyCandidancy(addr1.address, true, electionName)
+        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), true);
+        res = await voting.getCandidate(addr1.address);
+
+        await voting.startElection(electionName);
+        res = await voting.getVotes(electionName);
+        // console.log(res);
+        // vote before voting
+        await voting.connect(addr2).vote(electionName, addr1.address);
+        // await voting.connect(addr2).vote(electionName, addr1.address);
+        await voting.endElection(electionName);
+        // await voting.connect(addr2).vote(electionName, addr1.address);
+        res = await voting.getVotes(electionName);
+        // console.log(res);
+    });
+
+    it("Should create 2 candidates and count votes", async function() {
+        const [_, candidate1, candidate2, voter] = await ethers.getSigners();
+        await voting.connect(voter).requestVoter(voterName);
+
+        await voting.verifyVoter(voter.address, true);
+
+        await voting.createPosition(pos, posDetails);
+        await voting.createElection(electionName, electionDetails, pos);
+        await voting
+            .connect(candidate1)
+            .requestCandidancy(candidateName, candidateDetails, electionName);
+        
+        await voting.verifyCandidancy(candidate1.address, true, electionName)
+
+        await voting
+            .connect(candidate2)
+            .requestCandidancy(candidate1Name, candidateDetails, electionName);
+        
+        await voting.verifyCandidancy(candidate2.address, true, electionName)
+
+        await voting.startElection(electionName);
+        res = await voting.getVotes(electionName);
+        console.log(res);
+        // vote before voting
+        await voting.connect(voter).vote(electionName, candidate1.address);
+        await voting.endElection(electionName);
+        res = await voting.getVotes(electionName);
+        console.log(res);
+ 
+
+    })
 });
