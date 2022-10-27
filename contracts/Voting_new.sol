@@ -13,6 +13,7 @@ error VotingNew__NoCandidate();
 error VotingNew__CandidateAlreadyExists();
 error VotingNew__UnverifiedCandidate();
 error VotingNew__ElectionExists();
+error VotingNew__ElectionNotExists();
 error VotingNew__ElectionNotExixts();
 error VotingNew__ElectionNotStarted();
 error VotingNew__ElectionNotRunning();
@@ -59,6 +60,8 @@ contract VotingNew {
         // mapping(address => bool) voted; // error why don't know
         address[] voted;
         bool exists;
+        address[] candidates;
+        // mapping (string => uint256) voteCount;
         // starting time
         // ending time
     }
@@ -151,6 +154,12 @@ contract VotingNew {
     }
     modifier electionExists(string memory election) {
         if (elections[election].exists != true) {
+            revert VotingNew__ElectionNotExists();
+        }
+        _;
+    }
+    modifier electionNotExists(string memory election) {
+        if (elections[election].exists == true) {
             revert VotingNew__ElectionExists();
         }
         _;
@@ -200,7 +209,7 @@ contract VotingNew {
         string memory name,
         string memory details,
         string memory position
-    ) public onlyAdmin positionExists(position) {
+    ) public onlyAdmin positionExists(position) electionNotExists(name) {
         elections[name].name = name;
         elections[name].details = details;
         elections[name].position = positions[position];
@@ -237,6 +246,7 @@ contract VotingNew {
     {
         if (isVerified == true) {
             candidates[_address].verified[election] = true;
+            elections[election].candidates.push(_address);
             return;
         }
         delete candidates[_address];
