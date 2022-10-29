@@ -54,8 +54,10 @@ describe("Voting_new", function () {
         await voting.createPosition(pos, posDetails);
 
         var res = await voting.getPosition(pos);
-        console.log(res);
+        // console.log(res);
         assert.equal(posDetails, res["details"]);
+        var res = await voting.getAllPositions();
+        console.log(res)
     });
 
     // it("Should not create same position", async function () {
@@ -138,8 +140,12 @@ describe("Voting_new", function () {
     it("Should create 2 candidates and count votes", async function() {
         const [_, candidate1, candidate2, voter] = await ethers.getSigners();
         await voting.connect(voter).requestVoter(voterName);
-
+        res = await voting.getAllVoters();
+        console.log("------", res)
         await voting.verifyVoter(voter.address, true);
+        res = await voting.getAllVoters();
+        console.log("======", res)
+
 
         await voting.createPosition(pos, posDetails);
         await voting.createElection(electionName, electionDetails, pos);
@@ -156,14 +162,16 @@ describe("Voting_new", function () {
         await voting.verifyCandidancy(candidate2.address, true, electionName)
 
         await voting.startElection(electionName);
-        res = await voting.getVotes(electionName);
-        console.log(res);
+        // res = await voting.getVotes(electionName);
+        // console.log(res);
         // vote before voting
         await voting.connect(voter).vote(electionName, candidate1.address);
         await voting.endElection(electionName);
-        res = await voting.getVotes(electionName);
+        // res = await voting.getVotes(electionName);
+        // console.log(res);
+        res = await voting.getAllCandidates();
         console.log(res);
- 
-
+        // res = await voting.getAllElections();
+        // console.log(res);
     })
 });

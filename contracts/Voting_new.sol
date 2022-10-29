@@ -271,6 +271,10 @@ contract VotingNew {
         return (details, state);
     }
 
+    function getAllElections() public view returns (string[] memory) {
+        return electionsList;
+    }
+
     function getPosition(string memory name)
         public
         view
@@ -285,6 +289,11 @@ contract VotingNew {
         exists = positions[name].exists;
         return (details, person, exists);
     }
+    
+    function getAllPositions() public view returns (string[] memory){
+        return positionsList;
+    }
+    
 
     function getCandidate(address _address)
         public
@@ -306,6 +315,15 @@ contract VotingNew {
 
         // position = candidates[_address].election.position.name;
         return (name, details, election, exists); //, position);
+    }
+
+    function getAllCandidates() public view returns (address[] memory allCandidatesAddress, string[] memory allCandidatesName) {
+        allCandidatesAddress = candidateList;
+        allCandidatesName = new string[](allCandidatesAddress.length);
+        for (uint256 i; i < allCandidatesAddress.length; i++) {
+            allCandidatesName[i] = candidates[allCandidatesAddress[i]].name;
+        }
+        return (allCandidatesAddress, allCandidatesName);
     }
 
     function getIsCandidateVerified(address _address, string memory election)
@@ -336,6 +354,14 @@ contract VotingNew {
         delete voters[_address];
         // TODO! need to remove voters form list
     }
+
+    function getAllVoters() public view onlyAdmin returns (address[] memory){
+        return votersList;
+    }
+
+    // TODO!
+    // function getVerifiedVoters();
+    // function getUnVerifiedVoters();
 
     // function getVoter(address _address) public view returns (
     //     string memory name,
