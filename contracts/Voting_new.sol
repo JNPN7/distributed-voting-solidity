@@ -94,13 +94,13 @@ contract VotingNew {
         }
         _;
     }
-    modifier notVoted(string memory election) {
-        // isVoter() {
-        // if (elections[election].voted[msg.sender] == true) {
-        //     revert VotingNew__AlreadyVoted();
-        // }
-        _;
-    }
+    // modifier notVoted(string memory election) {
+    //     // isVoter() {
+    //     // if (elections[election].voted[msg.sender] == true) {
+    //     //     revert VotingNew__AlreadyVoted();
+    //     // }
+    //     _;
+    // }
     modifier positionExists(string memory position) {
         if (positions[position].exists != true) {
             revert VotingNew__NoPosition();
@@ -174,29 +174,29 @@ contract VotingNew {
         _;
     }
     // need another logic, logic doesn't make sense
-    modifier electionStarted(string memory election) {
-        if (elections[election].state != State.NotStarted) {
-            revert VotingNew__ElectionNotStarted();
-        }
-        _;
-    }
+    // modifier electionStarted(string memory election) {
+    //     if (elections[election].state != State.NotStarted) {
+    //         revert VotingNew__ElectionNotStarted();
+    //     }
+    //     _;
+    // }
     modifier electionRunning(string memory election) {
         if (elections[election].state != State.Running) {
             revert VotingNew__ElectionNotRunning();
         }
         _;
     }
-    modifier electionEnded(string memory election) {
-        if (elections[election].state != State.Ended) {
-            revert VotingNew__ElectionNotEnded();
-        }
-        _;
-    }
+    // modifier electionEnded(string memory election) {
+    //     if (elections[election].state != State.Ended) {
+    //         revert VotingNew__ElectionNotEnded();
+    //     }
+    //     _;
+    // }
 
     // Functions
-    function addAdmin(address _address) public onlyAdmin {
-        admins[_address] = true;
-    }
+    // function addAdmin(address _address) public onlyAdmin {
+    //     admins[_address] = true;
+    // }
 
     function checkAdmin() public view returns (bool) {
         return admins[msg.sender];
@@ -306,19 +306,20 @@ contract VotingNew {
             string memory name,
             string memory details,
             Election[] memory election,
-            // bool verfied,
+            bool[] memory verified
             // string memory position
-            bool exists
         )
     {
         name = candidates[_address].name;
         details = candidates[_address].details;
         // verfied = candidates[_address].verified;
-        exists = candidates[_address].exists;
         election = candidates[_address].election;
-
+        verified = new bool[](election.length);
+        for (uint256 i; i< election.length; i++){
+           verified[i] = candidates[_address].verified[election[i].name];
+        }
         // position = candidates[_address].election.position.name;
-        return (name, details, election, exists); //, position);
+        return (name, details, election, verified); //, position);
     }
 
     function getAllCandidates()
@@ -378,13 +379,13 @@ contract VotingNew {
         return (candidateAddress, candidateName);
     }
 
-    function getIsCandidateVerified(address _address, string memory election)
-        public
-        view
-        returns (bool)
-    {
-        return candidates[_address].verified[election];
-    }
+    // function getIsCandidateVerified(address _address, string memory election)
+    //     public
+    //     view
+    //     returns (bool)
+    // {
+    //     return candidates[_address].verified[election];
+    // }
 
     function requestVoter(string memory name) public {
         if (voters[msg.sender].exists == true) {

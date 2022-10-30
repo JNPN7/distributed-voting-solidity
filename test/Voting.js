@@ -105,9 +105,7 @@ describe("Voting_new", function () {
         console.log("before verification", res);
         res = await voting.getVerifiedCandidatesOfElection(electionName);
         console.log("before verification verified", res);
-        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), false);
         await voting.verifyCandidancy(addr1.address, true, electionName)
-        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), true);
         
         res = await voting.getAllUnVerifiedCandidates();
         console.log("after verification", res);
@@ -139,10 +137,9 @@ describe("Voting_new", function () {
             .connect(addr1)
             .requestCandidancy(candidateName, candidateDetails, electionName);
         
-        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), false);
         await voting.verifyCandidancy(addr1.address, true, electionName)
-        assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), true);
         res = await voting.getCandidate(addr1.address);
+        console.log(res)
 
         await voting.startElection(electionName);
         res = await voting.getVotes(electionName);
