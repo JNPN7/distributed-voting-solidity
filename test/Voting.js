@@ -101,18 +101,37 @@ describe("Voting_new", function () {
             .connect(addr1)
             .requestCandidancy(candidateName, candidateDetails, electionName);
         
+        res = await voting.getAllUnVerifiedCandidates();
+        console.log("before verification", res);
+        res = await voting.getVerifiedCandidatesOfElection(electionName);
+        console.log("before verification verified", res);
         assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), false);
         await voting.verifyCandidancy(addr1.address, true, electionName)
         assert.equal(await voting.getIsCandidateVerified(addr1.address, electionName), true);
-        res = await voting.getCandidate(addr1.address);
+        
+        res = await voting.getAllUnVerifiedCandidates();
+        console.log("after verification", res);
+        res = await voting.getVerifiedCandidatesOfElection(electionName);
+        console.log("after verification verified", res);
+        // res = await voting.getCandidate(addr1.address);
         // console.log(res);
     });
 
     it("Should request voter, verify and vote", async function() {
         const [_, addr1, addr2] = await ethers.getSigners();
         await voting.connect(addr2).requestVoter(voterName);
+        
+        res = await voting.getVerifiedVoters();
+        console.log("before verification ==== verified votors", res)
+        res = await voting.getUnVerifiedVoters();
+        console.log("before verification ==== unverified votors", res)
 
         await voting.verifyVoter(addr2.address, true);
+
+        res = await voting.getVerifiedVoters();
+        console.log("after verification ==== verified votors", res)
+        res = await voting.getUnVerifiedVoters();
+        console.log("after verification ==== unverified votors", res)
 
         await voting.createPosition(pos, posDetails);
         await voting.createElection(electionName, electionDetails, pos);

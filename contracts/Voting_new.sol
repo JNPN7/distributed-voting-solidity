@@ -251,7 +251,12 @@ contract VotingNew {
         address _address,
         bool isVerified,
         string memory election
-    ) public onlyAdmin electionExists(election) candidateExists(_address, election){
+    )
+        public
+        onlyAdmin
+        electionExists(election)
+        candidateExists(_address, election)
+    {
         if (isVerified == true) {
             candidates[_address].verified[election] = true;
             elections[election].candidates.push(_address);
@@ -289,11 +294,10 @@ contract VotingNew {
         exists = positions[name].exists;
         return (details, person, exists);
     }
-    
-    function getAllPositions() public view returns (string[] memory){
+
+    function getAllPositions() public view returns (string[] memory) {
         return positionsList;
     }
-    
 
     function getCandidate(address _address)
         public
@@ -317,13 +321,61 @@ contract VotingNew {
         return (name, details, election, exists); //, position);
     }
 
-    function getAllCandidates() public view returns (address[] memory allCandidatesAddress, string[] memory allCandidatesName) {
+    function getAllCandidates()
+        public
+        view
+        returns (
+            address[] memory allCandidatesAddress,
+            string[] memory allCandidatesName
+        )
+    {
         allCandidatesAddress = candidateList;
         allCandidatesName = new string[](allCandidatesAddress.length);
         for (uint256 i; i < allCandidatesAddress.length; i++) {
             allCandidatesName[i] = candidates[allCandidatesAddress[i]].name;
         }
         return (allCandidatesAddress, allCandidatesName);
+    }
+
+    function getVerifiedCandidatesOfElection(string memory election)
+        public
+        view
+        electionExists(election)
+        returns (
+            address[] memory candidatesAddress,
+            string[] memory candidateName
+        )
+    {
+        candidatesAddress = elections[election].candidates;
+        candidateName = new string[](candidatesAddress.length);
+        for (uint256 i; i < candidatesAddress.length; i++) {
+            candidateName[i] = candidates[candidatesAddress[i]].name;
+        }
+        return (candidatesAddress, candidateName);
+    }
+
+    function getAllUnVerifiedCandidates()
+        public
+        view
+        returns (
+            address[] memory candidateAddress,
+            string[] memory candidateName
+        )
+    {
+        candidateAddress = new address[](candidateList.length);
+        candidateName = new string[](candidateList.length);
+        uint256 l = 0;
+        for (uint256 i; i < candidateList.length; i++) {
+            // Candidate memory candidate = candidates[candidateList[i]];
+            for (uint256 j; j < candidates[candidateList[i]].election.length; j++) {
+                if (candidates[candidateList[i]].verified[candidates[candidateList[i]].election[j].name] != true) {
+                    candidateAddress[l] = candidates[candidateList[i]]._address;
+                    candidateName[l++] = candidates[candidateList[i]].name;
+                    break;
+                }
+            }
+        }
+        return (candidateAddress, candidateName);
     }
 
     function getIsCandidateVerified(address _address, string memory election)
@@ -355,24 +407,49 @@ contract VotingNew {
         // TODO! need to remove voters form list
     }
 
-    function getAllVoters() public view onlyAdmin returns (address[] memory){
+    function getAllVoters() public view onlyAdmin returns (address[] memory) {
         return votersList;
     }
 
-    // TODO!
-    // function getVerifiedVoters();
+    function getVerifiedVoters()
+        public
+        view
+        onlyAdmin
+        returns (address[] memory verifiedVoters)
+    {
+        verifiedVoters = new address[](votersList.length);
+        uint256 l = 0;
+        for (uint256 i; i < votersList.length; i++) {
+            if (voters[votersList[i]].verified == true) {
+                verifiedVoters[l++] = votersList[i];
+            }
+        }
+        return (verifiedVoters);
+    }
+
+    function getUnVerifiedVoters()
+        public
+        view
+        onlyAdmin
+        returns (address[] memory unVerifiedVoters)
+    {
+        unVerifiedVoters = new address[](votersList.length);
+        uint256 l = 0;
+        for (uint256 i; i < votersList.length; i++) {
+            if (voters[votersList[i]].verified != true) {
+                unVerifiedVoters[l++] = votersList[i];
+            }
+        }
+        return (unVerifiedVoters);
+    }
+
     // function getUnVerifiedVoters();
 
-    // function getVoter(address _address) public view returns (
-    //     string memory name,
-    //     bool verfied,
-    //     bool exists
-    // ) {
-    //     name = voters[_address].name;
-    //     verfied = voters[_address].verified;
-    //     exists = voters[_address].exists;
-    //     return(name, verfied, exists);
-    // }
+    function getVoter(address _address) public view returns (
+        Voter memory
+    ) {
+        return(voters[_address]);
+    }
 
     function vote(string memory election, address candidate)
         public
@@ -392,8 +469,8 @@ contract VotingNew {
     }
 
     function getVotes(string memory election)
-        view
         public
+        view
         electionExists(election)
         returns (
             address[] memory candidateAddr,
